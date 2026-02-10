@@ -63,3 +63,27 @@ const testConnection = async () => {
         return false;
     }
 }
+
+const syncDatabase = async (force = false, alter = false) => {
+try{
+    await sequelize.sync ({force, alter});
+    if(force){
+        console.log('DB Sincronizada');
+    } else if (alter) {
+        console.log('db sincronizada');
+    } else {
+        console.log('db sincronizadas');
+    }
+
+    return true;
+} catch (error) {
+    console.error('x error al sincronizar la db:', error.message)
+}
+};
+
+//exportar la instanciade sequelize y las funciones 
+module.exports = {
+    sequelize,
+    testConnection,
+    syncDatabase
+}
