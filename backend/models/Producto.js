@@ -275,12 +275,5 @@ Producto.prototype.reducirStock = async function(cantidad) {
     return await this.save();
 };
 
-/**
- * Metodo para aumentar el stock
- * Util si cancelar una vento o recibir inventario
- * @param {number} cantidad - cantidad a aumentar
- * @return {Promise<Producto>} producto actualizado
- */
-
 // Exportar modelo Subcategoria
 module.exports = Subcategoria;
