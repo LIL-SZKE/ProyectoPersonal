@@ -10,6 +10,7 @@ const { DataTypes } = require('sequelize');
 // importar instancia de sequelize
 const { sequelize } = require('../config/database');
 const { type } = require('os');
+const { table, time } = require('console');
 
 /**
  * Definir modelo de Carrito
@@ -93,36 +94,21 @@ const Carrito = sequelize.define(
                 msg: 'El precio unitario no puede ser negativo'
             }
         }
-    },
-
-
-    nombre: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-      unique: {
-        msg: 'Ya existe una categoria con este nombre'
-      },
-      validate: {
-        notEmpty: {
-          msg: 'El nombre de la categoria no puede estar vacio'
-        },
-        len: {
-          args: [2, 100],
-          msg: 'El nombre debe tener entre 2 y 100 caracteres'
-        }
-      }
-    },
-
-    /**
-     * Descripcion de la categoria 
-     */
-    descripcion: {
-      type: DataTypes.TEXT,
-      allowNull: true,
     }, 
-     /**
-     * Hooks acciones automaticas
-     */
+
+
+    //Opciones de modelo
+
+    tableName: 'carritos', // nombre de la tabla en la base de datos
+    timestamps: true, // agrega campos createdAt y updatedAt
+
+    indexes: [
+        {
+            unique: true,
+            fields: ['usuarioId'] // un usuario no puede tener el mismo producto mas de una vez en el carrito
+        }
+    ],
+
     hooks: {
 
         /**
@@ -183,6 +169,74 @@ Carrito.prototype.calcularSubtotal = function () {
     return parseFloat(this.precioUnitario) * this.cantidad;
 };
 
+/**
+ * Metodo para actualizar la cantidad
+ * @param {number} nuevaCantidad - Nueva cantidad 
+ * @return {Promise} - Item actualizado
+ */
 
-// Exportar modelo Subcategoria
+Carrito.prototype.actualizarCantidad = async function (nuevaCantidad) {
+  const Producto = require('./Producto');
+  const producto = await Producto.findByPk(this.productoId);
+
+  if (!producto.hayStock(nuevaCantidad)) {
+    throw new Error(`Stock insuficiente, solo hay ${producto.stock} unidades disponibles`);
+  }
+
+  this.cantidad = nuevaCantidad;
+  return await this.save();
+};
+
+/**
+ * Metodo para obtener el carrito completo de un usuario
+ * Incluye informacion de los productos 
+ * @param {number} usuarioId - ID del usuario
+ * @return {Promise<Array>} - Items del carrito con producto
+ */
+
+Carrito.obtenerCarritoUsuario = async function (usuarioId) {
+  const Producto = require('./Producto');
+
+  return await this.findAll({
+    where: { usuarioId },
+    include: [{
+       model: Producto,
+        as: 'producto', 
+      }],
+      order: [['createdAt', 'DESC']]
+  });
+};
+
+/**
+ * Metodo para calcular el total del carrito de un usuario
+ * @param {number} usuarioId - ID del usuario
+ * @return {Promise<number>} - Total del carrito  
+ */
+Carrito.calcularTotalCarrito = async function (usuarioId) {
+  const itemsCarrito = await this.findAll(
+    {
+      where: { usuarioId }
+    }
+  );
+
+  let total = 0;
+  for (const item of itemsCarrito) {
+    total += item.calcularSubtotal();
+  }
+  return total;
+};
+
+/**
+ * Metodo para vaciar el carrito de un usuario
+ * Util despues de realizar un pedido 
+ * @param {number} usuarioId - ID del usuario
+ * @return {Promise} - Carrito vaciado
+ */
+Carrito.vaciarCarrito = async function (usuarioId) {
+  return await this.destroy({
+    where: { usuarioId }
+  });
+};
+
+//Exportar modelo
 module.exports = Carrito;
