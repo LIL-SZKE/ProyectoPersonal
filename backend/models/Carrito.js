@@ -119,4 +119,70 @@ const Carrito = sequelize.define(
     descripcion: {
       type: DataTypes.TEXT,
       allowNull: true,
-    },
+    }, 
+     /**
+     * Hooks acciones automaticas
+     */
+    hooks: {
+
+        /**
+         * BeforeCreate - Se ejecuta antes de crear una subcategoria
+         * Verifica que la categoria padre exista y esté activa
+         */
+        beforeCreate: async (itemCarrito) => {
+
+            const Categoria = require('./categoria');
+
+            // Buscar categoria padre
+            const categoria = await Categoria.findByPk(itemCarrito.CategoriaId);
+
+            if (!Producto) {
+                throw new Error('El producto seleccionado no existe');
+            }
+
+            if (!Producto.activo) {
+                throw new Error(`Stock insuficiente, solo hay ${Producto.stock} unidades disponibles`);
+            }
+
+            //Guardar el precio actual del producto 
+            itemCarrito.precioUnitario = Producto.precio;
+        },
+
+        /**
+         * BeforeUpdate - Se ejecuta antes de actualizar un carrito
+         * Valida que haya stock duficiente si se aumenta la cantidad 
+         */
+        BeforeUpdate: async (itemCarrito) => {
+
+            if (itemCarrito.changed('Cantidad') && !itemCarrito.activo) {
+                const Producto = require('./Producto');
+                const Producto = await Producto.findByPk(itemCarrito.ProductoId);
+
+                if (!Producto) {
+                    throw new Error('El producto seleccionado no existe');
+                }
+
+                if (itemCarrito.Cantidad) {
+                    throw new Error(`Stock insuficiente, solo hay ${Producto.stock} unidades disponibles`);
+                }
+
+            }
+        }
+    }
+});
+
+//METODOS DE INSTANCIA
+
+/**
+ * Metodo para calcular eñ subtotal de este item
+ * 
+ * @return {number} subtotal = precioUnitario * cantidad
+ */
+
+Carrito.prototype.calcularSubtotal = function () {
+    return parseFloat(this.precioUnitario) * this.cantidad;
+};
+
+
+// Exportar modelo Subcategoria
+module.exports = Carrito;
